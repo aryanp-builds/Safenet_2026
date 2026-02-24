@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeNet Industrial Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @keyframes cardPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(59,130,246,0.6); }
+            100% { transform: scale(1); }
+        }
+        .card-pulse {
+            animation: cardPulse 0.3s ease;
+        }
+        .dashboard-content {
+            transition: opacity 0.2s ease;
+        }
+        .dashboard-content.fade-out {
+            opacity: 0.4;
+        }
+        .live-pulse {
+            animation: livePulse 1.5s infinite;
+        }
+        @keyframes livePulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
+
+    <!-- Ambient background (shifts with danger) -->
+    <div id="ambientBg" class="fixed inset-0 transition-colors duration-1000 pointer-events-none" style="background: radial-gradient(circle at top left, #1a2a3a, #0a0f14); z-index: -1;"></div>
+
+    <!-- Danger overlay (semi‑transparent red) -->
+    <div id="dangerOverlay" class="fixed inset-0 bg-red-500/10 pointer-events-none z-50 hidden"></div>
+
+    <div class="flex h-screen relative">
+        <!-- Sidebar (hidden initially, will be shown by JS after nodes load) -->
+        <aside id="sidebar" class="w-64 bg-gray-800/80 backdrop-blur-sm border-r border-gray-700 p-4 flex flex-col hidden">
+            <div class="text-2xl font-bold mb-6 text-blue-400 flex items-center gap-2">
+                <i class="fas fa-shield-alt"></i> SafeNet
+            </div>
+            <h3 class="text-xs uppercase tracking-wider text-gray-400 mb-3">Systems</h3>
+            <ul id="nodeList" class="space-y-2 flex-1">
+                <!-- Nodes will be injected here by JavaScript -->
+            </ul>
+            <div class="mt-auto pt-4 text-xs text-gray-500">
+                <i class="fas fa-circle text-green-500 mr-1"></i> Safe
+                <i class="fas fa-circle text-yellow-500 ml-2 mr-1"></i> Caution
+                <i class="fas fa-circle text-red-500 ml-2 mr-1"></i> Danger
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar -->
+            <header class="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 p-4 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <span class="text-lg font-medium">Dashboard</span>
+                    <!-- Enhanced live badge with pulsing outer glow -->
+                    <div class="flex items-center gap-1.5 bg-gray-700/50 px-3 py-1 rounded-full">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 live-pulse"></span>
+                        </span>
+                        <span class="text-xs text-green-300 font-medium">LIVE</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-xl text-gray-300 cursor-pointer hover:text-white" id="notificationBell"></i>
+                        <span id="notificationBadge" class="absolute -top-1 -right-2 bg-red-500 text-xs rounded-full w-4 h-4 flex items-center justify-center hidden">3</span>
+                    </div>
+                    <i class="fas fa-cog text-xl text-gray-300 cursor-pointer hover:text-white" id="settingsIcon"></i>
+                </div>
+            </header>
+
+            <!-- Dashboard Content (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6 dashboard-content" id="dashboardContent">
+                <!-- Last update timestamp -->
+                <div class="text-sm text-gray-400 mb-3" id="lastUpdate">Last update: --</div>
+
+                <!-- Sensor Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="sensor-card bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+                        <h4 class="text-gray-400 text-sm"><i class="fas fa-thermometer-half mr-1 text-blue-400"></i>Temperature</h4>
+                        <p class="text-3xl font-semibold mt-1" id="tempValue">--°C</p>
+                    </div>
+                    <div class="sensor-card bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+                        <h4 class="text-gray-400 text-sm"><i class="fas fa-tint mr-1 text-blue-300"></i>Humidity</h4>
+                        <p class="text-3xl font-semibold mt-1" id="humidityValue">--%</p>
+                    </div>
+                    <div class="sensor-card bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+                        <h4 class="text-gray-400 text-sm"><i class="fas fa-wind mr-1 text-purple-400"></i>Gas (ppm)</h4>
+                        <p class="text-3xl font-semibold mt-1" id="gasValue">--</p>
+                    </div>
+                    <div class="sensor-card bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+                        <h4 class="text-gray-400 text-sm"><i class="fas fa-fire mr-1 text-orange-400"></i>Flame</h4>
+                        <p class="text-3xl font-semibold mt-1" id="flameValue">--</p>
+                    </div>
+                </div>
+
+                <!-- Charts Grid (two columns on large screens, with gap and bottom margin) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+    <!-- Temperature Chart -->
+    <div class="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+        <h4 class="text-gray-300 mb-2 flex items-center gap-6">
+            <i class="fas fa-chart-line text-blue-400"></i>Temperature Trend
+        </h4>
+        <canvas id="tempChart" class="w-full h-64 max-h-64"></canvas>
+    </div>
+
+    <!-- Gas Chart -->
+    <div class="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+        <h4 class="text-gray-300 mb-2 flex items-center gap-6">
+            <i class="fas fa-chart-bar text-red-400"></i>Gas Levels
+        </h4>
+        <canvas id="gasChart" class="w-full h-64 max-h-64"></canvas>
+    </div>
+</div>
+                <!-- Recent Alerts -->
+                <div class="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+                    <h4 class="text-gray-300 mb-2 flex items-center gap-2"><i class="fas fa-bell text-yellow-400"></i>Recent Alerts</h4>
+                    <ul id="alertList" class="space-y-2 text-sm">
+                        <li class="text-gray-400">No alerts</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 rounded-xl p-6 w-96 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Settings</h2>
+            <label class="block mb-3">
+                <span class="text-gray-300">Gas Warning Threshold (ppm)</span>
+                <input type="number" id="gasThreshold" value="300" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+            </label>
+            <label class="block mb-3">
+                <span class="text-gray-300">Temperature Warning (°C)</span>
+                <input type="number" id="tempThreshold" value="40" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+            </label>
+            <label class="block mb-3">
+                <span class="text-gray-300">Flame Danger</span>
+                <select id="flameMode" class="w-full bg-gray-700 rounded px-3 py-2 mt-1">
+                    <option value="true">Trigger Danger</option>
+                    <option value="false">Ignore Flame</option>
+                </select>
+            </label>
+            <div class="flex justify-end space-x-2">
+                <button id="closeSettings" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500">Cancel</button>
+                <button id="saveSettings" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-500">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio alert (optional) -->
+    <audio id="alertSound" preload="auto">
+        <source src="alert.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="script.js"></script>
+</body>
+</html>

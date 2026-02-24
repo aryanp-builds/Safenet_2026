@@ -1,0 +1,33 @@
+/* Optional: smooth transitions */
+.card, .sidebar, .top-bar {
+    transition: all 0.2s ease;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+@keyframes cardPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); box-shadow: 0 0 15px rgba(59,130,246,0.5); }
+    100% { transform: scale(1); }
+}
+.card-pulse {
+    animation: cardPulse 0.3s ease;
+}
+.dashboard-content {
+    transition: opacity 0.2s ease;
+}
+.dashboard-content.fade-out {
+    opacity: 0;
+}
