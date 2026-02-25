@@ -1,14 +1,13 @@
-// ================= CONFIGURATION =================
-// Replace these with your actual Supabase credentials
+
 const SUPABASE_URL = 'https://rtmbetaxgpqivnwvfnch.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0bWJldGF4Z3BxaXZud3ZmbmNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1OTM5MzUsImV4cCI6MjA4NzE2OTkzNX0.0NIEEnDYm3mmKbDIyTSKQb_zy2hIeRi3q0zZ24e1uBs';
-// =================================================
+
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Global variables
-let nodes = [];                // will be populated from Supabase
-let selectedNodeId = null;     // set after nodes load
+let nodes = [];                
+let selectedNodeId = null;     
 let temperatureData = [];
 let gasData = [];
 let timestamps = [];
@@ -266,7 +265,7 @@ function initCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: true,
-            aspectRatio: 2, // Width:Height ratio (2:1 makes it wider)
+            aspectRatio: 2, 
             scales: {
                 y: {
                     beginAtZero: false,
